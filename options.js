@@ -4,7 +4,7 @@
 const statusDiv = document.getElementById('status');
 const resetButton = document.getElementById('reset');
 // Target & Submission
-const targetUrlInput = document.getElementById('targetUrl');
+const targetTabIndexInput = document.getElementById('targetTabIndex');
 const submitKeyRadios = document.querySelectorAll('input[name="submitKey"]');
 // Position
 const anchorRadios = document.querySelectorAll('input[name="anchor"]');
@@ -15,7 +15,7 @@ const offsetYValueSpan = document.getElementById('offsetYValue');
 
 // --- Default Settings ---
 const DEFAULTS = {
-    targetUrl: 'https://aistudio.google.com/live/',
+    targetTabIndex: 1,
     submitKey: 'ctrl-enter',
     position: {
         anchor: 'top-right',
@@ -27,8 +27,14 @@ const DEFAULTS = {
 // --- Core Functions ---
 
 function saveOptions() {
+    // Ensure the tab index is a positive integer
+    const tabIndex = parseInt(targetTabIndexInput.value, 10);
+    if (isNaN(tabIndex) || tabIndex < 1) {
+        targetTabIndexInput.value = DEFAULTS.targetTabIndex; // Reset to default if invalid
+    }
+
     const settings = {
-        targetUrl: targetUrlInput.value,
+        targetTabIndex: parseInt(targetTabIndexInput.value, 10),
         submitKey: document.querySelector('input[name="submitKey"]:checked').value,
         position: {
             anchor: document.querySelector('input[name="anchor"]:checked').value,
@@ -50,7 +56,7 @@ function restoreOptions() {
         const settings = result.settings;
 
         // Restore Target & Submission
-        targetUrlInput.value = settings.targetUrl;
+        targetTabIndexInput.value = settings.targetTabIndex;
         document.querySelector(`input[name="submitKey"][value="${settings.submitKey}"]`).checked = true;
 
         // Restore Position
@@ -64,7 +70,7 @@ function restoreOptions() {
 
 function resetToDefaults() {
     // Set UI to defaults
-    targetUrlInput.value = DEFAULTS.targetUrl;
+    targetTabIndexInput.value = DEFAULTS.targetTabIndex;
     document.querySelector(`input[name="submitKey"][value="${DEFAULTS.submitKey}"]`).checked = true;
     document.querySelector(`input[name="anchor"][value="${DEFAULTS.position.anchor}"]`).checked = true;
     offsetXSlider.value = DEFAULTS.position.offsetX;
@@ -72,8 +78,6 @@ function resetToDefaults() {
 
     updateSliderValues();
     saveOptions();
-    // After resetting, we might need to re-request permission for the default URL if it was removed
-    handleUrlChange();
 }
 
 function updateSliderValues() {
@@ -81,45 +85,12 @@ function updateSliderValues() {
     offsetYValueSpan.textContent = `${offsetYSlider.value} px`;
 }
 
-// --- Permissions Handling ---
-
-async function handleUrlChange() {
-    const url = targetUrlInput.value;
-    if (!url || !url.startsWith('http')) {
-        // Don't request permissions for invalid or empty URLs
-        return;
-    }
-
-    try {
-        const urlPattern = new URL(url).origin + '/*';
-        const granted = await chrome.permissions.contains({ origins: [urlPattern] });
-
-        if (!granted) {
-            const granted = await chrome.permissions.request({ origins: [urlPattern] });
-            if (granted) {
-                console.log('Permission granted for:', urlPattern);
-                saveOptions();
-            } else {
-                console.log('Permission denied for:', urlPattern);
-            }
-        } else {
-            // Permission already exists, just save
-            saveOptions();
-        }
-    } catch (error) {
-        console.error('Invalid URL specified:', error);
-        statusDiv.textContent = 'Invalid URL format.';
-        setTimeout(() => { statusDiv.textContent = ''; }, 2000);
-    }
-}
-
-
 // --- Event Listeners ---
 document.addEventListener('DOMContentLoaded', restoreOptions);
 resetButton.addEventListener('click', resetToDefaults);
 
 // Listen for changes on all inputs to save
-targetUrlInput.addEventListener('blur', handleUrlChange); // Special handling for URL to request permission
+targetTabIndexInput.addEventListener('change', saveOptions);
 submitKeyRadios.forEach(radio => radio.addEventListener('change', saveOptions));
 anchorRadios.forEach(radio => radio.addEventListener('change', saveOptions));
 offsetXSlider.addEventListener('change', saveOptions);

@@ -2,7 +2,7 @@
 
 const DEFAULTS = {
     settings: {
-        targetUrl: 'https://aistudio.google.com/live/',
+        targetTabIndex: 1,
         submitKey: 'ctrl-enter',
         position: {
             anchor: 'top-right',
@@ -18,12 +18,11 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
         // First, get the user's settings from storage
         chrome.storage.sync.get(DEFAULTS, (data) => {
             const { settings } = data;
-            const targetUrl = settings.targetUrl;
-            // The query needs a wildcard to match any sub-path
-            const queryUrl = targetUrl.endsWith('*') ? targetUrl : targetUrl + (targetUrl.endsWith('/') ? '*' : '/*');
+            // The user provides a 1-based index, but the API expects 0-based.
+            const targetTabIndex = settings.targetTabIndex - 1;
 
-            // 1. Find the target tab
-            chrome.tabs.query({ url: queryUrl }, (tabs) => {
+            // 1. Find the target tab by its index
+            chrome.tabs.query({ index: targetTabIndex }, (tabs) => {
                 if (tabs.length > 0) {
                     const targetTabId = tabs[0].id;
                     // 2. Execute script in the found tab
@@ -33,20 +32,15 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
                         args: [request.text, settings.submitKey] // Pass text and submit key
                     });
                 } else {
-                    // 3. If no tab is found, create a new one
-                    chrome.tabs.create({ url: targetUrl, active: false }, (newTab) => {
-                        // Listen for the tab to finish loading before injecting script
-                        chrome.tabs.onUpdated.addListener(function listener(tabId, info) {
-                            if (tabId === newTab.id && info.status === 'complete') {
-                                chrome.scripting.executeScript({
-                                    target: { tabId: newTab.id },
-                                    function: fillInputAndSubmit,
-                                    args: [request.text, settings.submitKey]
-                                });
-                                // Clean up the listener
-                                chrome.tabs.onUpdated.removeListener(listener);
-                            }
-                        });
+                    // 3. If no tab is found, notify the user.
+                    // This is better than creating a new tab, which might not be what the user wants.
+                    console.warn(`Send Text: No tab found at index ${settings.targetTabIndex}.`);
+                    // Optionally, create a user-facing notification
+                    chrome.notifications.create({
+                        type: 'basic',
+                        iconUrl: 'icon.png',
+                        title: 'Send Text Failed',
+                        message: `Could not find a tab at position ${settings.targetTabIndex}.`
                     });
                 }
             });

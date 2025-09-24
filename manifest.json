@@ -6,16 +6,15 @@
   "permissions": [
     "tabs",
     "scripting",
-    "storage"
+    "storage",
+    "notifications"
   ],
   "options_ui": {
     "page": "options.html",
     "open_in_tab": true
   },
   "host_permissions": [],
-  "optional_host_permissions": [
-    "*://*/*"
-  ],
+  "optional_host_permissions": [],
   "background": {
     "service_worker": "background.js"
   },
