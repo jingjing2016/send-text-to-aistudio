@@ -101,14 +101,28 @@ document.addEventListener('mouseup', (e) => {
     }, 10);
 });
 
+// Left-click sends to background
 icon.addEventListener('click', () => {
     if (currentSelection) {
         chrome.runtime.sendMessage({
             action: "sendText",
-            text: currentSelection
+            text: currentSelection,
+            sendInForeground: false // Explicitly send in background
         });
-        icon.style.display = 'none';
-        currentSelection = '';
+        hideIcon();
+    }
+});
+
+// Right-click sends to foreground
+icon.addEventListener('contextmenu', (e) => {
+    e.preventDefault(); // Prevent the default context menu
+    if (currentSelection) {
+        chrome.runtime.sendMessage({
+            action: "sendText",
+            text: currentSelection,
+            sendInForeground: true // Send and make active
+        });
+        hideIcon();
     }
 });
 
