@@ -32,12 +32,9 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
                         function: fillInputAndSubmit,
                         args: [request.text, settings.submitKey] // Pass text and submit key
                     });
-                    // Also, bring the tab to the front
-                    chrome.tabs.update(targetTabId, { active: true });
-                    chrome.windows.update(tabs[0].windowId, { focused: true });
                 } else {
                     // 3. If no tab is found, create a new one
-                    chrome.tabs.create({ url: targetUrl, active: true }, (newTab) => {
+                    chrome.tabs.create({ url: targetUrl, active: false }, (newTab) => {
                         // Listen for the tab to finish loading before injecting script
                         chrome.tabs.onUpdated.addListener(function listener(tabId, info) {
                             if (tabId === newTab.id && info.status === 'complete') {
@@ -80,15 +77,19 @@ function fillInputAndSubmit(text, submitKey) {
 
         // --- Step 2: Simulate the keypress ---
         const useCtrlKey = submitKey === 'ctrl-enter';
-        const enterEvent = new KeyboardEvent('keydown', {
+        const commonEventProps = {
             key: 'Enter',
             code: 'Enter',
-            ctrlKey: useCtrlKey, // Conditionally set based on settings
+            ctrlKey: useCtrlKey,
             bubbles: true,
             cancelable: true
-        });
+        };
 
-        inputField.dispatchEvent(enterEvent);
+        const keydownEvent = new KeyboardEvent('keydown', commonEventProps);
+        inputField.dispatchEvent(keydownEvent);
+
+        const keyupEvent = new KeyboardEvent('keyup', commonEventProps);
+        inputField.dispatchEvent(keyupEvent);
 
     } else {
         // Fallback if the input isn't found immediately
