@@ -1,17 +1,8 @@
 // background.js
 
-// 当扩展被安装时，创建一个右键菜单
-chrome.runtime.onInstalled.addListener(() => {
-  chrome.contextMenus.create({
-    id: "sendTextToAIStudio",
-    title: "发送选中文本并执行 (Ctrl+Enter)", // 更新了菜单标题以反映新功能
-    contexts: ["selection"] // 只有在选中文本时才显示
-  });
-});
-
-// 监听右键菜单的点击事件
-chrome.contextMenus.onClicked.addListener((info, tab) => {
-  if (info.menuItemId === "sendTextToAIStudio" && info.selectionText) {
+// 监听来自 content.js 的消息
+chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
+  if (request.action === "sendText" && request.text) {
     // 1. 查找目标标签页
     chrome.tabs.query({ url: "https://aistudio.google.com/live/*" }, (tabs) => {
       if (tabs.length > 0) {
@@ -20,11 +11,25 @@ chrome.contextMenus.onClicked.addListener((info, tab) => {
         // 2. 在目标标签页上执行脚本
         chrome.scripting.executeScript({
           target: { tabId: targetTabId },
-          function: fillInputAndSubmit, // 使用更新后的函数
-          args: [info.selectionText] // 将选中的文本作为参数传入
+          function: fillInputAndSubmit,
+          args: [request.text] // 将接收到的文本作为参数传入
         });
       } else {
-        alert("错误：找不到 https://aistudio.google.com/live 标签页！");
+        // 如果找不到，可以创建一个新标签页
+        chrome.tabs.create({ url: "https://aistudio.google.com/live/" }, (newTab) => {
+            // 在新标签页加载完成后执行脚本
+            chrome.tabs.onUpdated.addListener(function listener(tabId, info) {
+                if (tabId === newTab.id && info.status === 'complete') {
+                    chrome.scripting.executeScript({
+                        target: { tabId: newTab.id },
+                        function: fillInputAndSubmit,
+                        args: [request.text]
+                    });
+                    // 执行后移除监听器，避免重复执行
+                    chrome.tabs.onUpdated.removeListener(listener);
+                }
+            });
+        });
       }
     });
   }
@@ -36,28 +41,39 @@ chrome.contextMenus.onClicked.addListener((info, tab) => {
  * @param {string} text - 要填充的文本。
  */
 function fillInputAndSubmit(text) {
-  // 注意：你仍然需要确保这个选择器能准确地找到目标输入框
-  const inputField = document.querySelector('textarea'); 
+  // 查找页面上最主要的输入区域，<textarea> 优先
+  const inputField = document.querySelector('textarea, [contenteditable="true"]');
   
   if (inputField) {
     // --- 第1步：填充文本 ---
-    inputField.value = text;
-    // 模拟输入事件，以便页面上的框架（如React, Vue等）能够识别到内容变化
-    inputField.dispatchEvent(new Event('input', { bubbles: true }));
+    if (inputField.isContentEditable) {
+        inputField.focus();
+        document.execCommand('insertText', false, text);
+    } else {
+        inputField.value = text;
+        inputField.dispatchEvent(new Event('input', { bubbles: true }));
+    }
 
-    // --- 第2步 (新增功能)：模拟 Ctrl+Enter 按键 ---
+    // --- 第2步：模拟 Ctrl+Enter 按键 ---
     const enterEvent = new KeyboardEvent('keydown', {
       key: 'Enter',
       code: 'Enter',
-      ctrlKey: true,    // 关键：模拟按下了 Ctrl 键
-      bubbles: true,    // 允许事件冒泡
+      ctrlKey: true,
+      bubbles: true,
       cancelable: true
     });
     
-    // 将创建的键盘事件派发到输入框上
     inputField.dispatchEvent(enterEvent);
 
   } else {
-    alert("在目标页面上找不到指定的输入框！");
+    // 备用方案：如果找不到输入框，可以尝试在页面加载后延迟执行
+    setTimeout(() => {
+        const fallbackInputField = document.querySelector('textarea, [contenteditable="true"]');
+        if (fallbackInputField) {
+            fillInputAndSubmit(text); // 重新调用自己
+        } else {
+            alert("在目标页面上找不到指定的输入区域！");
+        }
+    }, 1000); // 延迟1秒
   }
 }
