@@ -6,36 +6,46 @@ icon.style.position = 'absolute';
 icon.style.cursor = 'pointer';
 icon.style.zIndex = '10000';
 icon.style.display = 'none';
-// Add a class for easier selection and styling if needed
 icon.classList.add('send-text-icon');
 document.body.appendChild(icon);
 
 let currentSelection = '';
-let iconPosition = 'top-right'; // Default position
 
-// --- 1. Load the setting from storage ---
-function loadPositionSetting() {
-    chrome.storage.sync.get({
-        iconPosition: 'top-right' // Default value
-    }, (items) => {
-        iconPosition = items.iconPosition;
+// Default settings object
+const DEFAULTS = {
+    anchor: 'top-right',
+    offsetX: 0,
+    offsetY: 0
+};
+
+// Variable to hold the current settings
+let positionSettings = DEFAULTS;
+
+// --- 1. Load settings from storage ---
+function loadPositionSettings() {
+    chrome.storage.sync.get({ iconPosition: DEFAULTS }, (result) => {
+        // Ensure the loaded settings are a valid object, otherwise use defaults
+        if (typeof result.iconPosition === 'object' && result.iconPosition !== null) {
+            positionSettings = { ...DEFAULTS, ...result.iconPosition };
+        } else {
+            positionSettings = DEFAULTS;
+        }
     });
 }
 
-// --- 2. Listen for changes in settings ---
+// --- 2. Listen for real-time changes ---
 chrome.storage.onChanged.addListener((changes, namespace) => {
     if (changes.iconPosition) {
-        iconPosition = changes.iconPosition.newValue;
+        positionSettings = { ...DEFAULTS, ...changes.iconPosition.newValue };
     }
 });
 
-// Initial load of the setting
-loadPositionSetting();
+// Initial load of settings
+loadPositionSettings();
 
 
 // --- 3. Update position calculation logic ---
 document.addEventListener('mouseup', (e) => {
-    // Prevent icon from appearing when clicking on the icon itself
     if (e.target.classList.contains('send-text-icon')) {
         return;
     }
@@ -49,35 +59,39 @@ document.addEventListener('mouseup', (e) => {
             const range = selection.getRangeAt(0);
             const rect = range.getBoundingClientRect();
 
-            // Calculate position based on the setting
-            let top, left;
+            let baseX, baseY;
             const scrollX = window.scrollX;
             const scrollY = window.scrollY;
-            const iconWidth = 16;  // Approximate width of the icon
-            const iconHeight = 16; // Approximate height of the icon
+            const iconWidth = 16;
+            const iconHeight = 16;
 
-            switch (iconPosition) {
+            // Determine base coordinates from the anchor point
+            switch (positionSettings.anchor) {
                 case 'top-left':
-                    top = scrollY + rect.top - iconHeight;
-                    left = scrollX + rect.left;
+                    baseX = scrollX + rect.left;
+                    baseY = scrollY + rect.top - iconHeight;
                     break;
                 case 'bottom-right':
-                    top = scrollY + rect.bottom;
-                    left = scrollX + rect.right - iconWidth;
+                    baseX = scrollX + rect.right - iconWidth;
+                    baseY = scrollY + rect.bottom;
                     break;
                 case 'bottom-left':
-                    top = scrollY + rect.bottom;
-                    left = scrollX + rect.left;
+                    baseX = scrollX + rect.left;
+                    baseY = scrollY + rect.bottom;
                     break;
                 case 'top-right':
                 default:
-                    top = scrollY + rect.top - iconHeight;
-                    left = scrollX + rect.right - iconWidth;
+                    baseX = scrollX + rect.right - iconWidth;
+                    baseY = scrollY + rect.top - iconHeight;
                     break;
             }
 
-            icon.style.left = `${left}px`;
-            icon.style.top = `${top}px`;
+            // Apply user-defined offsets
+            const finalX = baseX + positionSettings.offsetX;
+            const finalY = baseY + positionSettings.offsetY;
+
+            icon.style.left = `${finalX}px`;
+            icon.style.top = `${finalY}px`;
             icon.style.display = 'block';
 
         } else {
@@ -98,7 +112,6 @@ icon.addEventListener('click', () => {
     }
 });
 
-// Hide icon on resize or scroll
 function hideIcon() {
     icon.style.display = 'none';
     currentSelection = '';

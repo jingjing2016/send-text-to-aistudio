@@ -6,10 +6,16 @@
     body {
       font-family: sans-serif;
       padding: 1em;
-      width: 300px;
+      width: 350px;
     }
     h1 {
       font-size: 1.2em;
+    }
+    h2 {
+      font-size: 1.0em;
+      margin-top: 1.5em;
+      border-bottom: 1px solid #ccc;
+      padding-bottom: 0.3em;
     }
     .options-group {
       margin-top: 1em;
@@ -18,35 +24,55 @@
       display: block;
       margin-bottom: 0.5em;
     }
+    .slider-group {
+        margin-top: 0.5em;
+    }
+    .slider-group label {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+    }
+    .slider-group input[type="range"] {
+        flex-grow: 1;
+        margin: 0 1em;
+    }
+    .slider-group span {
+        min-width: 40px;
+        text-align: right;
+    }
     #status {
       margin-top: 1em;
       color: green;
       font-weight: bold;
+      height: 1em;
+    }
+    #reset {
+        margin-top: 1.5em;
     }
   </style>
 </head>
 <body>
   <h1>Icon Position Settings</h1>
-  <p>Choose where the icon should appear next to selected text.</p>
 
+  <h2>1. Anchor Point</h2>
+  <p>Choose the corner of the text selection to use as a base position.</p>
   <div class="options-group">
-    <label>
-      <input type="radio" name="position" value="top-right">
-      Top-Right of selection
-    </label>
-    <label>
-      <input type="radio" name="position" value="top-left">
-      Top-Left of selection
-    </label>
-    <label>
-      <input type="radio" name="position" value="bottom-right">
-      Bottom-Right of selection
-    </label>
-    <label>
-      <input type="radio" name="position" value="bottom-left">
-      Bottom-Left of selection
-    </label>
+    <label><input type="radio" name="anchor" value="top-right"> Top-Right</label>
+    <label><input type="radio" name="anchor" value="top-left"> Top-Left</label>
+    <label><input type="radio" name="anchor" value="bottom-right"> Bottom-Right</label>
+    <label><input type="radio" name="anchor" value="bottom-left"> Bottom-Left</label>
   </div>
+
+  <h2>2. Fine-tune with Offsets</h2>
+  <p>Use the sliders to adjust the icon's position relative to the anchor point.</p>
+  <div class="slider-group">
+    <label>Horizontal: <input type="range" id="offsetX" min="-50" max="50" value="0"> <span id="offsetXValue">0 px</span></label>
+  </div>
+  <div class="slider-group">
+    <label>Vertical: <input type="range" id="offsetY" min="-50" max="50" value="0"> <span id="offsetYValue">0 px</span></label>
+  </div>
+
+  <button id="reset">Reset to Defaults</button>
 
   <div id="status"></div>
 
