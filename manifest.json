@@ -5,8 +5,13 @@
   "description": "Sends text to an input field on a specific background tab.",
   "permissions": [
     "tabs",
-    "scripting"
+    "scripting",
+    "storage"
   ],
+  "options_ui": {
+    "page": "options.html",
+    "open_in_tab": true
+  },
   "host_permissions": [
     "https://aistudio.google.com/live/*"
   ],
