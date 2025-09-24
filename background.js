@@ -92,10 +92,12 @@ function fillInputAndSubmit(text, submitKey) {
     // and enable/update any relevant UI elements like a submit button.
     setTimeout(() => {
         const useCtrlKey = submitKey === 'ctrl-enter';
+        const useAltKey = submitKey === 'alt-enter';
         const commonEventProps = {
             key: 'Enter',
             code: 'Enter',
             ctrlKey: useCtrlKey,
+            altKey: useAltKey,
             bubbles: true,
             cancelable: true
         };
