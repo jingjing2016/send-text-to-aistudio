@@ -1,63 +1,109 @@
 // background.js
 
-// 当扩展被安装时，创建一个右键菜单
+const DEFAULTS = {
+    settings: {
+        targetingMode: 'url',
+        targetUrl: 'https://aistudio.google.com/live/',
+        tabPosition: 1,
+        submitKey: 'ctrl-enter',
+    }
+};
+
+// When the extension is installed, create a context menu
 chrome.runtime.onInstalled.addListener(() => {
   chrome.contextMenus.create({
-    id: "sendTextToAIStudio",
-    title: "发送选中文本并执行 (Ctrl+Enter)", // 更新了菜单标题以反映新功能
-    contexts: ["selection"] // 只有在选中文本时才显示
+    id: "sendTextToTarget",
+    title: "Send selected text to target",
+    contexts: ["selection"]
   });
 });
 
-// 监听右键菜单的点击事件
+// Listen for the context menu click
 chrome.contextMenus.onClicked.addListener((info, tab) => {
-  if (info.menuItemId === "sendTextToAIStudio" && info.selectionText) {
-    // 1. 查找目标标签页
-    chrome.tabs.query({ url: "https://aistudio.google.com/live/*" }, (tabs) => {
-      if (tabs.length > 0) {
-        const targetTabId = tabs[0].id; // 默认发送到第一个匹配的标签页
-        
-        // 2. 在目标标签页上执行脚本
-        chrome.scripting.executeScript({
-          target: { tabId: targetTabId },
-          function: fillInputAndSubmit, // 使用更新后的函数
-          args: [info.selectionText] // 将选中的文本作为参数传入
-        });
-      } else {
-        alert("错误：找不到 https://aistudio.google.com/live 标签页！");
-      }
+  if (info.menuItemId === "sendTextToTarget" && info.selectionText) {
+
+    chrome.storage.sync.get(DEFAULTS, (data) => {
+        const settings = { ...DEFAULTS, ...data.settings };
+
+        if (settings.targetingMode === 'position') {
+            // --- Target by Position Logic ---
+            const tabIndex = settings.tabPosition - 1;
+            if (tabIndex < 0) return;
+
+            chrome.tabs.query({ currentWindow: true }, (tabs) => {
+                // Sort tabs by their index to ensure visual order
+                const sortedTabs = tabs.sort((a, b) => a.index - b.index);
+                const targetTab = sortedTabs[tabIndex];
+                if (targetTab) {
+                    executeScriptInTab(targetTab.id, info.selectionText, settings.submitKey);
+                } else {
+                    alert(`Error: No tab found at position ${settings.tabPosition}.`);
+                }
+            });
+
+        } else {
+            // --- Target by URL Logic ---
+            const targetUrl = settings.targetUrl;
+            const queryUrl = targetUrl.endsWith('*') ? targetUrl : targetUrl + (targetUrl.endsWith('/') ? '*' : '/*');
+
+            chrome.tabs.query({ url: queryUrl }, (tabs) => {
+                if (tabs.length > 0) {
+                    executeScriptInTab(tabs[0].id, info.selectionText, settings.submitKey);
+                } else {
+                    alert(`Error: No tab found with URL matching ${targetUrl}`);
+                }
+            });
+        }
     });
   }
 });
 
-/**
- * 这个函数将被注入到目标页面并执行。
- * 它会填充输入框并模拟按下 Ctrl+Enter。
- * @param {string} text - 要填充的文本。
- */
-function fillInputAndSubmit(text) {
-  // 注意：你仍然需要确保这个选择器能准确地找到目标输入框
-  const inputField = document.querySelector('textarea'); 
-  
-  if (inputField) {
-    // --- 第1步：填充文本 ---
-    inputField.value = text;
-    // 模拟输入事件，以便页面上的框架（如React, Vue等）能够识别到内容变化
-    inputField.dispatchEvent(new Event('input', { bubbles: true }));
-
-    // --- 第2步 (新增功能)：模拟 Ctrl+Enter 按键 ---
-    const enterEvent = new KeyboardEvent('keydown', {
-      key: 'Enter',
-      code: 'Enter',
-      ctrlKey: true,    // 关键：模拟按下了 Ctrl 键
-      bubbles: true,    // 允许事件冒泡
-      cancelable: true
+// Helper function to avoid duplicating the executeScript call
+function executeScriptInTab(tabId, text, submitKey) {
+    chrome.scripting.executeScript({
+        target: { tabId: tabId },
+        function: fillInputAndSubmit,
+        args: [text, submitKey]
     });
-    
-    // 将创建的键盘事件派发到输入框上
-    inputField.dispatchEvent(enterEvent);
+}
 
-  } else {
-    alert("在目标页面上找不到指定的输入框！");
-  }
+/**
+ * This function is injected into the target page.
+ * It fills an input field and simulates a keypress.
+ * @param {string} text - The text to fill.
+ * @param {string} submitKey - The key to simulate ('enter' or 'ctrl-enter').
+ */
+function fillInputAndSubmit(text, submitKey) {
+    const inputField = document.querySelector('textarea, [contenteditable="true"]');
+
+    if (!inputField) {
+        alert("Could not find a suitable input field on the target page.");
+        return;
+    }
+
+    if (inputField.isContentEditable) {
+        inputField.focus();
+        document.execCommand('insertText', false, text);
+    } else {
+        inputField.value = text;
+        inputField.dispatchEvent(new Event('input', { bubbles: true }));
+    }
+    
+    // The delay gives frameworks time to process the input change
+    setTimeout(() => {
+        const useCtrlKey = submitKey === 'ctrl-enter';
+        const commonEventProps = {
+            key: 'Enter',
+            code: 'Enter',
+            ctrlKey: useCtrlKey,
+            bubbles: true,
+            cancelable: true
+        };
+
+        const keydownEvent = new KeyboardEvent('keydown', commonEventProps);
+        inputField.dispatchEvent(keydownEvent);
+
+        const keyupEvent = new KeyboardEvent('keyup', commonEventProps);
+        inputField.dispatchEvent(keyupEvent);
+    }, 100);
 }
