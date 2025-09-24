@@ -1,0 +1,17 @@
+{
+  "manifest_version": 3,
+  "name": "Send Text to Background Tab",
+  "version": "1.0",
+  "description": "Sends text to an input field on a specific background tab.",
+  "permissions": [
+    "contextMenus",
+    "tabs",
+    "scripting"
+  ],
+  "host_permissions": [
+    "https://aistudio.google.com/live/*"
+  ],
+  "background": {
+    "service_worker": "background.js"
+  }
+}
