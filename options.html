@@ -6,7 +6,7 @@
     body {
       font-family: sans-serif;
       padding: 1em;
-      width: 350px;
+      width: 450px;
     }
     h1 {
       font-size: 1.2em;
@@ -23,6 +23,10 @@
     label {
       display: block;
       margin-bottom: 0.5em;
+    }
+    input[type="text"] {
+        width: 100%;
+        padding: 4px;
     }
     .slider-group {
         margin-top: 0.5em;
@@ -52,9 +56,20 @@
   </style>
 </head>
 <body>
-  <h1>Icon Position Settings</h1>
+  <h1>Send Text Settings</h1>
 
-  <h2>1. Anchor Point</h2>
+  <h2>1. Target & Submission</h2>
+  <div class="options-group">
+    <label for="targetUrl">Target URL:</label>
+    <input type="text" id="targetUrl" placeholder="e.g., https://example.com/search">
+  </div>
+  <div class="options-group">
+    <label>Submission Key:</label>
+    <label><input type="radio" name="submitKey" value="ctrl-enter"> Ctrl+Enter</label>
+    <label><input type="radio" name="submitKey" value="enter"> Enter</label>
+  </div>
+
+  <h2>2. Icon Position Anchor</h2>
   <p>Choose the corner of the text selection to use as a base position.</p>
   <div class="options-group">
     <label><input type="radio" name="anchor" value="top-right"> Top-Right</label>
@@ -63,7 +78,7 @@
     <label><input type="radio" name="anchor" value="bottom-left"> Bottom-Left</label>
   </div>
 
-  <h2>2. Fine-tune with Offsets</h2>
+  <h2>3. Position Offset</h2>
   <p>Use the sliders to adjust the icon's position relative to the anchor point.</p>
   <div class="slider-group">
     <label>Horizontal: <input type="range" id="offsetX" min="-50" max="50" value="0"> <span id="offsetXValue">0 px</span></label>
@@ -72,7 +87,7 @@
     <label>Vertical: <input type="range" id="offsetY" min="-50" max="50" value="0"> <span id="offsetYValue">0 px</span></label>
   </div>
 
-  <button id="reset">Reset to Defaults</button>
+  <button id="reset">Reset All Settings</button>
 
   <div id="status"></div>
 

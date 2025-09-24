@@ -12,8 +12,9 @@
     "page": "options.html",
     "open_in_tab": true
   },
-  "host_permissions": [
-    "https://aistudio.google.com/live/*"
+  "host_permissions": [],
+  "optional_host_permissions": [
+    "*://*/*"
   ],
   "background": {
     "service_worker": "background.js"
